@@ -1,0 +1,6 @@
+framework module Pods_CoordinatorTests {
+  umbrella header "Pods-CoordinatorTests-umbrella.h"
+
+  export *
+  module * { export * }
+}
