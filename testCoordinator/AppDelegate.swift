@@ -60,17 +60,31 @@ class ACoordinator: ResultCoordinator<Bool>{
             .flatMap{ [weak self] coor in
                 return self?.coordinate(to: coor) ?? .empty()
             }
-            .do(onNext: { [weak parentNavController] _ in
-                parentNavController?.popViewController(animated: true)
-            })
+//            .do(onNext: { [weak parentNavController] _ in
+//                parentNavController?.popViewController(animated: true)
+//            })
       
         return Observable.merge(push(vc: vc), selected)
+            .take(1)
     }
 }
 
 class BCoordinator: BinderCoordinator<Bool, Bool>{
     override func start() -> Observable<Bool> {
-        let vc = ViewController()
+        return Observable.create({ [weak self] observer in
+            guard let `self` = self else { return Disposables.create() }
+            
+            let binded = self.binder.map{
+                observer.onNext(!$0)
+                }.subscribe()
+            
+            let vc = ViewController()
+            let free = self.push(vc: vc)
+                .subscribe()
+            
+            return Disposables.create(binded, free)
+        }).take(1)
+        
         //return push(vc: vc)
             //.flatMap{ [weak binder] _ in binder ?? .empty() }
             //.map{ return !$0 }

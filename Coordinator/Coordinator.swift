@@ -52,10 +52,11 @@ public class ResultCoordinator<Base>: Coordinator, CoordinatorOutput {
     }
     
     func coordinate<T>(to coordinator: ResultCoordinator<T>) -> Observable<T>{
+        print(self, #function)
         coordinator.parentNavController = parentNavController
         store(coordinator)
         return coordinator.start()
-            .debug()
+            .debug("\(self)")
             .do(onCompleted: { [unowned self] in self.free(coordinator) })
     }
     
@@ -64,11 +65,13 @@ public class ResultCoordinator<Base>: Coordinator, CoordinatorOutput {
     }
 
     func push(vc: UIViewController, animated: Bool = true) -> Observable<Base>{
+        print(self, #function)
         parentNavController.pushViewController(vc, animated: animated)
         return vc.rx.deallocated.flatMap{ _ in Observable.empty() }
     }
     
     func present(vc: UIViewController, animated: Bool = true, completion: (() -> Void)?) -> Observable<Base>{
+        print(self, #function)
         parentNavController.present(vc, animated: animated, completion: completion)
         return vc.rx.deallocated.flatMap{ _ in Observable.empty() }
     }
