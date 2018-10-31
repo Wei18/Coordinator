@@ -20,7 +20,7 @@ private protocol Coordinator{
 fileprivate protocol CoordinatorOutput{
     associatedtype ResultType
     func start() -> Observable<ResultType>
-    var stop: Observable<ResultType> { get }
+    func push(vc: UIViewController, animated: Bool) -> Observable<ResultType>
 }
 
 fileprivate protocol CoordinatorInput{
@@ -28,7 +28,9 @@ fileprivate protocol CoordinatorInput{
     var binder: Observable<BindType>! { get set }
 }
 
-class ResultCoordinator<Base>: Coordinator, CoordinatorOutput {
+public class ResultCoordinator<Base>: Coordinator, CoordinatorOutput {
+    
+    public private(set) var parentNavController: UINavigationController!
     
     let disposeBag = DisposeBag()
     
@@ -36,23 +38,41 @@ class ResultCoordinator<Base>: Coordinator, CoordinatorOutput {
     
     fileprivate var childCoordinators: [UUID: Coordinator] = [:]
     
-    private var parentNavigationController: UINavigationController!
-    
-    func coordinate<T>(to coordinator: ResultCoordinator<T>) -> Observable<T>{
-        store(coordinator)
-        return coordinator.start()
-            .do(onCompleted: { [unowned self] in self.free(coordinator) })
+    init(root: UINavigationController){
+        print(self, #function)
+        parentNavController = root
     }
     
-    var stop: Observable<Base> {
-        let vc = parentNavigationController.visibleViewController!
-        return vc.rx.deallocated.flatMap{ _ -> Observable<Base> in .empty() }
+    init(){
+        print(self, #function)
+    }
+    
+    deinit {
+        print(self, #function)
+    }
+    
+    func coordinate<T>(to coordinator: ResultCoordinator<T>) -> Observable<T>{
+        coordinator.parentNavController = parentNavController
+        store(coordinator)
+        return coordinator.start()
+            .debug()
+            .do(onCompleted: { [unowned self] in self.free(coordinator) })
     }
     
     func start() -> Observable<Base>{
         fatalError("\(#function) must be implemented.")
     }
 
+    func push(vc: UIViewController, animated: Bool = true) -> Observable<Base>{
+        parentNavController.pushViewController(vc, animated: animated)
+        return vc.rx.deallocated.flatMap{ _ in Observable.empty() }
+    }
+    
+    func present(vc: UIViewController, animated: Bool = true, completion: (() -> Void)?) -> Observable<Base>{
+        parentNavController.present(vc, animated: animated, completion: completion)
+        return vc.rx.deallocated.flatMap{ _ in Observable.empty() }
+    }
+    
     fileprivate func store(_ coordinator: Coordinator){
         childCoordinators[coordinator.id] = coordinator
     }
